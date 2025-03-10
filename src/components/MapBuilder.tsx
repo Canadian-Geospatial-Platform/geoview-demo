@@ -12,7 +12,6 @@ import {
   List, ListItem,
   Stack
 } from '@mui/material';
-
 //import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 //import ExpandLessIcon from '@mui/icons-material/Expandless';
 import Collapse from '@mui/material/Collapse';
@@ -25,7 +24,6 @@ import PillsAutoComplete from './PillsAutoComplete';
 import {aoiModified,eventLoopCounter,SwiperPackageOrientation,SwiperPackagekeyboardOffset,layerOptions,
   componentsOptions, basemapShading, basemapLabelling, footerTabslist, languageOptions, navBarOptions, basemapOptions, appBarOptions, mapInteractionOptions, mapProjectionOptions, zoomOptions, themeOptions, CONFIG_FILES_LIST,
   corePackagesOptions,aoiDisplay,swiperDisplay
-
 } from '@/constants';
 import SingleSelectComplete from './SingleSelectAutoComplete';
 import { ConfigSaveUploadButtons } from './ConfigSaveUploadButtons';
@@ -35,7 +33,6 @@ import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 
 export function MapBuilder() {
-
   const cgpvContext = useContext(CGPVContext);
 
   if (!cgpvContext) {
@@ -52,7 +49,6 @@ export function MapBuilder() {
   const displayGeocoreFileid = useRef(0);
   const [geocoreFileSelected, SetGeocoreFileSelected] = useState<boolean>(true); //toogle geocore file button
   const [geocoreId, setGecoreId] = useState<string>("");
-
   const [isDisabled, setIsDisabled] = useState(false);
   const [isAoiDisabled, setAoiIsDisabled] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -74,7 +70,6 @@ export function MapBuilder() {
   const [extentError, setExtentError] = useState(false);
   const [aoiRecordIndex, setAoiRecordIndex] = useState(0);
   const [itemColor, setItemColor] = useState('#1976d2');
-
 
   useEffect(() => {
     if (document.getElementById(mapId) !== null) { 
@@ -113,10 +108,8 @@ export function MapBuilder() {
       while (layerOptions.length > 0) {
         layerOptions.pop();
       }
-
-      for (var i in featureInfoLayerSet) {   
-        m.push({ title: '', value: '', group: "" }); 
-
+      for (var i in featureInfoLayerSet) {
+        m.push({ title: '', value: '', group: "" });
         if (featureInfoLayerSet.hasOwnProperty(i)) {
             m[i3].value = featureInfoLayerSet[i].layerPath;
             m[i3].title = featureInfoLayerSet[i].layerName;
@@ -125,7 +118,6 @@ export function MapBuilder() {
             i3++;
          }
       }
-
     }
     forceUpdate;
   }
@@ -189,8 +181,9 @@ export function MapBuilder() {
         };
       }; 
     };
-     return _.get(configJson, property) ?? defaultValue;
-  } 
+
+    return _.get(configJson, property) ?? defaultValue;
+  };
 
  
   const updateProperty = (property: string, value: any) => {
@@ -220,9 +213,7 @@ export function MapBuilder() {
     let geocoreLayerName = "";
     const myMap1 = cgpv.api.getMapViewer(mapId);
     const featureInfoLayerSet = myMap1.layer.mapViewer.layer.featureInfoLayerSet.resultSet;
-
     for (var i in featureInfoLayerSet) {// test if loaded
-
       if (featureInfoLayerSet.hasOwnProperty(i)) {
         if (featureInfoLayerSet[i].layerPath.includes(GeocoreId)) {
           geocoreLayerName = featureInfoLayerSet[i].layerName;
@@ -512,9 +503,7 @@ export function MapBuilder() {
         Apply State to Config File
       </Button>
 
-
         <Divider sx={{ my: 2 }} >Geocore Layer</Divider>
-
       <FormGroup aria-label="position">
       <Box sx={{ display: 'flex', flexDirection: 'row', mt: 1, gap: 1}}>
       <FormControl> 
@@ -534,9 +523,7 @@ export function MapBuilder() {
              }
             }
            }
-
         />
-
           </FormControl>
           <FormControl>
         <Button variant="contained" color="primary" 
@@ -544,9 +531,7 @@ export function MapBuilder() {
           onClick={(event) => {
             if (geocoreFileSelected){
               const myMap = cgpv.api.getMapViewer(mapId);
-
               myMap.layer.addGeoviewLayerByGeoCoreUUID(geocoreId);  
-
               setTimeout(() => loadGeocoreMap(geocoreId), 7000); //wait for file load
              }
           }} >
@@ -722,7 +707,6 @@ export function MapBuilder() {
 
         <Divider sx={{ my: 2 }} >Packages</Divider>
 
-
         <FormGroup aria-label="Core Packages Options">
           <FormLabel component="legend">Core Packages</FormLabel>
           <PillsAutoComplete
@@ -732,7 +716,6 @@ export function MapBuilder() {
               updateArrayProperty('corePackages', value);
               if ((selectedvalue === "swiper") && (reason == "selectOption")) {
                 setIsModified(true);
-
                 displayLayers.current = 1;
                 swiperDisplay.current = 1; 
                 setChecked(true); 
@@ -756,7 +739,6 @@ export function MapBuilder() {
                 handleApplyConfigChanges();
               }
               setIsModified(true);
-
             }}
             options={corePackagesOptions}
             label="CorePackages Options" placeholder="" />
@@ -997,95 +979,7 @@ export function MapBuilder() {
 
           </FormGroup>
 
-        {displayLayers.current === 1 ?
-         <Divider  />
-          : ''
-        }
-
-        <FormGroup aria-label="Layer List"  >
-        
-          {displayLayers.current === 1 ?
-          
-          <FormControlLabel  sx={{
-            justifyContent: 'flex-end',
-             alignItems: 'baseline',color : 'primary'
-          }}
-            label="Swiper Config"
-              control={<Switch checked={checked} onChange={handleChange} disabled={isDisabled} />}
-            labelPlacement="start"
-          />
-          : ''}
-    
-          <Collapse in={checked}>
-            
-          {displayLayers.current === 1 ?
-         
-            <SingleSelectComplete
-              options={SwiperPackageOrientation}
-              defaultValue={getProperty('corePackagesConfig[0].swiper.orientation')}
-              onChange={(value) => {
-                updateProperty('corePackagesConfig[0].swiper.orientation', value);
-                _.set(configJson, "corePackagesConfig[0].swiper.orientation", value);   // here this changes it
-                handleApplyConfigChanges();
-                }
-              }
-              label="Swiper Orientation" placeholder="" />
-            : ''}
-          
-          {displayLayers.current === 1 ?
-              <Divider sx={{ my: 2 }} />
-              : ''
-            }
-    
-          
-          {displayLayers.current === 1 ?
-          
-            <SingleSelectComplete
-              options={SwiperPackagekeyboardOffset}
-              defaultValue={getProperty('corePackagesConfig[0].swiper.keyboardOffset')}
-              onChange={(value) => {
-                updateProperty('corePackagesConfig[0].swiper.keyboardOffset', value);
-                _.set(configJson, "corePackagesConfig[0].swiper.keyboardOffset", value);   // here this changes it
-                handleApplyConfigChanges();
-                }
-              }
-              label="Swiper Keyboard Offset" placeholder="" />
-            : ''}
-          
-            {displayLayers.current === 1 ?
-              <Divider sx={{ my: 2 }} />
-              : ''
-            }
-
-          {
-              displayLayers.current === 1 ?
-            
-              <PillsAutoComplete
-                options={layerOptions}
-                defaultValue={getProperty('corePackagesConfig[0].swiper.layers')}
-                onChange={( value: any, reason: any,value2) => {
-                  updateProperty('corePackagesConfig[0].swiper.layers', value);
-                  if (reason === "selectOption") {
-                    const myMap = cgpv.api.getMapViewer(mapId);
-                    value.forEach((i : any) => myMap.plugins['swiper'].activateForLayer(i));              
-                    updateArrayProperty('corePackagesConfig[0].swiper.layers', value);
-                    setIsModified(true);   
-                    }
-                  else if (reason === "removeOption") {
-                    const myMap = cgpv.api.getMapViewer(mapId);
-                    myMap.plugins['swiper'].deActivateForLayer(value2);
-                    updateArrayProperty('corePackagesConfig[0].swiper.layers', value);                       
-                  }  
-                }}
-              label="Swiper Layer List" placeholder="" /> 
-             : ''
-            }
-            
-            </Collapse>
-        </FormGroup>
-
       </FormControl>
     </Box>
-
   );
 }
