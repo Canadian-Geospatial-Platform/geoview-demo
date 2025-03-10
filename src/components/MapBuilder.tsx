@@ -6,104 +6,187 @@ import {
   FormControl,
   FormGroup,
   FormLabel,
-  Switch,
+  Switch,  // commneted out jul 15 test
   TextField,
+  Tooltip,
+  List, ListItem,
+  Stack
 } from '@mui/material';
-import { useContext, useState, useEffect } from 'react';
-import { useSnackbar } from '@/providers/snackbarProvider';
+//import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+//import ExpandLessIcon from '@mui/icons-material/Expandless';
+import Collapse from '@mui/material/Collapse';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { useContext, useState, useReducer, useRef,useEffect, 
+} from 'react';
 import { CGPVContext } from '@/providers/cgpvContextProvider/CGPVContextProvider';
 import _ from 'lodash';
 import PillsAutoComplete from './PillsAutoComplete';
-import {
-  componentsOptions, basemapShading, basemapLabelling, footerTabslist, languageOptions, navBarOptions, basemapOptions,appBarOptions,mapInteractionOptions, mapProjectionOptions, zoomOptions, themeOptions, CONFIG_FILES_LIST, corePackagesOptions
+import {aoiModified,eventLoopCounter,SwiperPackageOrientation,SwiperPackagekeyboardOffset,layerOptions,
+  componentsOptions, basemapShading, basemapLabelling, footerTabslist, languageOptions, navBarOptions, basemapOptions, appBarOptions, mapInteractionOptions, mapProjectionOptions, zoomOptions, themeOptions, CONFIG_FILES_LIST,
+  corePackagesOptions,aoiDisplay,swiperDisplay
 } from '@/constants';
 import SingleSelectComplete from './SingleSelectAutoComplete';
 import { ConfigSaveUploadButtons } from './ConfigSaveUploadButtons';
-
-
+import { useSnackbar } from '@/providers/snackbarProvider';
+import { transformExtent } from 'ol/proj';
+import proj4 from 'proj4';
+import { register } from 'ol/proj/proj4';
 
 export function MapBuilder() {
-
-// const window;
-//  const geoviewPlugin= "";
   const cgpvContext = useContext(CGPVContext);
 
   if (!cgpvContext) {
     throw new Error('CGPVContent must be used within a CGPVProvider');
   }
-  let corePackages = [];
 
   const { mapId } = cgpvContext;
-  const { configJson, handleApplyStateToConfigFile, handleConfigFileChange, handleConfigJsonChange, configFilePath, mapWidth,mapHeight, setMapWidth, setMapHeight } = cgpvContext;
+  const { configJson, handleApplyStateToConfigFile, handleConfigFileChange, handleConfigJsonChange, configFilePath, mapWidth, mapHeight, setMapWidth, setMapHeight } = cgpvContext;
   const [modifiedConfigJson, setModifiedConfigJson] = useState<object>(configJson);
   const [isModified, setIsModified] = useState<boolean>(false);
   const [isEn, setEn] = useState<boolean>(true);
+  const [isMapSizeValid, setMapSizeValid] = useState(true);
+  const { enqueueSnackbar } = useSnackbar();
+  const displayGeocoreFileid = useRef(0);
+  const [geocoreFileSelected, SetGeocoreFileSelected] = useState<boolean>(true); //toogle geocore file button
+  const [geocoreId, setGecoreId] = useState<string>("");
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [isAoiDisabled, setAoiIsDisabled] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const [aoiChecked, setAoiChecked] = useState(false);
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+  const displayLayers = useRef(0); 
+
+   interface AoiFuncItem {
+    id: number;
+    title: string;
+    url: string;
+    extent: string;
+    isChecked: boolean;
+  }
+
+  const aoiFuncs: AoiFuncItem[] = []
+  const [aoiRecord, setAoiRecord] = useState(aoiFuncs);
+  const [extentValue, setExtentValue] = useState('');
+  const [extentError, setExtentError] = useState(false);
+  const [aoiRecordIndex, setAoiRecordIndex] = useState(0);
+  const [itemColor, setItemColor] = useState('#1976d2');
+  
+  useEffect(() => {
+    if (document.getElementById(mapId) !== null) { 
+      if (eventLoopCounter.current === 0) { // convert full screen in % to px on reinitialize
+        setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
+        eventLoopCounter.current = 1;
+      }
+    };
+  }, []);
+
+  const handleChange = () => {
+    setChecked((prev) => !prev);
+  };
+
+  const handleChangeAoi = () => {
+    setAoiChecked((prev) => !prev);
+  };
 
 
   const _updateConfigProperty = (property: string, value: any) => {
     const newConfig = { ...modifiedConfigJson };
-    console.log("new config", property,value);
     if (value === undefined) {
       _.unset(newConfig, property);
     } else {
       _.set(newConfig, property, value);
     }
     setModifiedConfigJson(newConfig);
-    console.log("new config", newConfig);
     setIsModified(true);
-
   }
 
-  const getProperty = (property: string, defaultValue = undefined) => {
-    // console.log('property=', property, _.get(configJson, property));
+  // creates layer list from viewer files loaded
+  const createLayerList = () => {
+    if (cgpv.api.hasMapViewer(mapId)) {
+      const myMap1 = cgpv.api.getMapViewer(mapId);
+      const featureInfoLayerSet = myMap1.layer.featureInfoLayerSet.layerApi.legendsLayerSet.resultSet;
+      let m = []; let i3 = 0;
+      while (layerOptions.length > 0) {
+        layerOptions.pop();
+      }
+      for (var i in featureInfoLayerSet) {   
+        m.push({ title: '', value: '', group: "" }); 
+        if (featureInfoLayerSet.hasOwnProperty(i)) {
+            m[i3].value = featureInfoLayerSet[i].layerPath;
+            m[i3].title = featureInfoLayerSet[i].layerName;
+            m[i3].group = "n";
+            layerOptions.push(m[i3]);
+            i3++;
+         }
+      }
+    }   
+    forceUpdate;
+  }
+
+  const getProperty = (property: string, defaultValue = undefined) => {     
     if (property === "corePackages") {
       let packages: any = _.get(configJson, property);
-      console.log("packages=", packages, typeof packages);
-      //  console.log("packages", typeof packages, packages, property);
-      // if (packages.find(x => x === "swiper")) {
-      // if (packages.contains["swiper"]){
-      //   Object.keys(packages).forEach(function eachKey(key) {
-    //  if (Object.values(packages).indexOf(["swiper"])) {
-        // alert(key);
-        // setSwiper(true);
-        // if (packages(0)  === 'swiper') {
-  //      console.log('has swiper');
-  //    }
-      //  
-      // 
-       
       for (var i in packages) {
-        //   Object.values(packages);
-        if (packages[i]  === "swiper") { 
-          //  setSwiper(true);
-             displayLayers.current = 1;
-          console.log(" display.layer=", displayLayers.current);
-        console.log(" swiper tureeeeee=", i, packages[i], Object.values(packages));
+        if (packages[i] === "swiper") {
+          setTimeout(createLayerList, 5000);
+          if (displayLayers.current === 0) {  // first time thru on reload
+            displayLayers.current = 1;
+            swiperDisplay.current = 1;
+            setChecked(true);
+          };
         };
       };
-
-      
-      console.log(" package=", packages);
-      
-     // if (packages    === "swiper") { 
-          //  setSwiper(true);
-      //       displayLayers.current = 1;
-          console.log(" display.layer=", displayLayers.current);
-      //  console.log(" swiper tureeeeee=", i, packages[i], Object.values(packages));
-    //    };
-
-
-        //  console.log(" swiper tureeeeee=",Object.keys(packages));
-   //   };
-        // alerts key) find(x => x === "swiper")){
-    //    setSwiper(true);
-     //     console.log(" swiper tureeeeee");
-   //  }
     };
-    //  if (packages.find((o => o ==="swiper"))) {
-   //     setSwiper(true);
-   //          }
-    
+
+    if (property === "appBar.tabs.core") {
+      let packages: any = _.get(configJson, property);     
+      for (var i in packages) { 
+       
+         if (packages[i] === "aoi-panel") {
+           if ((displayLayers.current === 0)) { //works displays aoi list when ony swiper in a file   
+            displayLayers.current = 1; 
+            aoiDisplay.current = 2;
+            setAoiChecked(true); 
+           }
+           if (aoiModified.current === 0) { // like useRef, not modified if reloads  
+             while (aoiFuncs.length > 0) {
+              aoiFuncs.pop();
+            }
+            let i3 = 0;
+        
+            let maxlayerId: any = _.get(configJson, "corePackagesConfig[0].aoi-panel.aoiList");
+           
+            if (typeof maxlayerId !== "undefined") {
+
+              let maxindex: any = maxlayerId.length;
+              for (let i = 0; i < maxindex; i++) {
+
+                let imageUrl = 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].imageUrl';
+                let title = 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].aoiTitle';
+                let extent = 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].extent';
+            
+                let aoiImageUrl = (_.get(configJson, imageUrl));
+                let aoiTitle = (_.get(configJson, title));
+                let aoiExtent = (_.get(configJson, extent));
+
+                aoiFuncs.push({ id: 0, title: '', url: "", extent: "", isChecked: false }); // added april 7 increse array
+            
+                aoiFuncs[i3].id = i3;
+              
+                aoiFuncs[i3].title = aoiTitle;
+                aoiFuncs[i3].url = aoiImageUrl;
+                aoiFuncs[i3].extent = aoiExtent;
+                aoiFuncs[i3].isChecked = false;
+              
+                i3++;
+        
+              } //for loop
+            } // index is not  undefined       
+          } //aoimodified
+        };
+      }; 
+    };
+
     return _.get(configJson, property) ?? defaultValue;
   };
 
@@ -129,312 +212,213 @@ export function MapBuilder() {
     }
   }
 
+  const loadGeocoreMap = (GeocoreId: string) => {
+    let geocoreFound = false;
+    let geocoreLayerName = "";
+    const myMap1 = cgpv.api.getMapViewer(mapId);
+    const featureInfoLayerSet = myMap1.layer.mapViewer.layer.featureInfoLayerSet.resultSet;
+    for (var i in featureInfoLayerSet) {  // test if loaded
+      if (featureInfoLayerSet.hasOwnProperty(i)) {
+        if (featureInfoLayerSet[i].layerPath.includes(GeocoreId)) {
+          geocoreLayerName = featureInfoLayerSet[i].layerName;
+          geocoreFound = true;
+        }
+      }
+    }
+    geocoreFound ? enqueueSnackbar('Geocore file loaded ' + geocoreLayerName) : enqueueSnackbar('Geocore ID not found ' + GeocoreId);
+    displayGeocoreFileid.current = 0;
+  }
+
   const handleApplyConfigChanges = () => {
     handleConfigJsonChange(modifiedConfigJson);
     setIsModified(false);
   }
 
-  const activateLayer = () => {
-     console.log("acticated layer --------------------  1");
-    setSwiper(true);
-    
-    //deb 21 2025 to un commetn out
-   //   updateArrayProperty("corePackages", ["swiper"]);
-   //  // setTimeout(cgpv.api.maps[mapId].plugins['swiper'].activateForLayer("esriFeatureLYR4/0"), 55000);
- console.log("acticated layer");
-  
-  }
-
- //const removeLayer = () => {
- //    console.log("acticated layer --------------------  1");
-  //  setSwiper(true);
-    
-    //deb 21 2025 to un commetn out
-   //   updateArrayProperty("corePackages", ["swiper"]);
-   //  // setTimeout(cgpv.api.maps[mapId].plugins['swiper'].activateForLayer("esriFeatureLYR4/0"), 55000);
- //console.log("acticated layer");
-  
-  //}
-
-
-
-    const handlePackageChange = (property: string, value: any, reason:any) => {
-      //  setIsModified(false);
-      console.log("property=", property, value,reason);
-      console.log("map id=", mapId);
-      const featureInfoLayerSet = cgpv.api.maps[mapId].layer.featureInfoLayerSet.resultSet;
-      console.log("feature info=", featureInfoLayerSet);
-      corePackages = value;
-      console.log("corepackages=", corePackages);
-      
-      setSwiper(true);
-      if (reason !== "removeOption") {
-     
-        displayLayers.current = displayLayers.current + 1;
+  const handlePackageChange = (property: string, value: any, reason: any,selectedvalue: any) => { 
+    if ((selectedvalue === "swiper") && (reason !== "removeOption")) {  
+      if (aoiDisplay.current === 2) {
+        _.set(modifiedConfigJson, "corePackages", ["aoi-panel", "swiper"]);
       }
       else {
-        displayLayers.current = 0; 
-          console.log("settinf off display layer=", displayLayers.current);
-    
+        _.set(modifiedConfigJson, "corePackages", ["swiper"]);
       }
-      // ._get ddoes get values of a json array on have o specify wtihan index._
-   //   console.log('map values=', _.mapValues(configJson,'map.listOfGeoviewLayerConfig[0].geoviewLayerName'));
+      _.set(modifiedConfigJson, "corePackagesConfig[0].swiper.orientation", "vertical");   // here this changes it
+      _.set(modifiedConfigJson, "corePackagesConfig[0].swiper.layers", []);   // here this changes it
+      _.set(modifiedConfigJson, "corePackagesConfig[0].swiper.keyboardOffset", 10);   // here this changes it
+        setIsModified(true);
+    }
+
+    if ((selectedvalue === "swiper") && (reason !== "removeOption"))  {
+      _.set(modifiedConfigJson, "corePackages", ["swiper"]);
+      handleApplyConfigChanges(); 
+    };
+
+    if ((selectedvalue === "aoi-panel") && (reason !== "removeOption")) {   
+      _.set(configJson, "corePackages", ["area-of-interest"]);
+      _.set(configJson, "appBar.tabs.core[0]", ["aoi-panel"]);//works nbut bad json
+      setIsModified(true);
+    }; 
    
-      
-    ////  console.log('map values=', _.mapValues(configJson, 'map.listOfGeoviewLayerConfig.geoviewLayerName'));
-      console.log("get =", _.get(configJson, 'map.listOfGeoviewLayerConfig[].geoviewLayerName'));
-    //  console.log("get =", _.get(configJson, 'map.listOfGeoviewLayerConfig[1].geoviewLayerName'));
-     //console.log("get =", _.get(configJson, 'map.listOfGeoviewLayerConfig[2].geoviewLayerName'));
-     
-      let m = [
-        { title: '', value: '' ,group:""},
-        { title: '', value: '' ,group:""},
-        { title: '', value: '',group:"" },
-        { title: '', value: '' ,group:""},
-        { title: '', value: '' ,group:""}, 
-        { title: '', value: '' ,group:""},
-                
-        { title: '', value: '' ,group:""},
+  }
 
-        { title: '', value: '',group:"" },
-
-        { title: '', value: '' ,group:""},
-        { title: '', value: '',group:"" },
-
-     
-
-
-      ];
-      for (let i = 0; i < 10; i++){      
-      
-        let layer = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerName';
-         //  let geoviewlayerName = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerName';
-      let geoviewlayerId = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerId';
-          let layerId = 'map.listOfGeoviewLayerConfig[' + i + '].listOfLayerEntryConfig[0].layerId';
-     console.log("layer=", _.get(configJson, layer),layer);
-        m[i].value = (_.get(configJson, layer)); //use i instead of 0
-           m[i].value = (_.get(configJson, geoviewlayerId)+"/"+_.get(configJson, layerId)); //use i instead of 0
-       
-       // m[i].value = geoviewlayerId + "/" + layerId;
-        m[i].title = (_.get(configJson, layer)); //use i instead of 0
-        m[i].group = "n";
-       console.log("m =", m[i]);
-      if ((typeof m[i].value) === "undefined") break; 
-     //  layerOptions.push(m[i]);
-       console.log("layerOptions =", layerOptions);
+  const handleChangeChecked = (event: any, id: number) => {
+    setChecked(event.target.checked);
+    const newItems = [...aoiRecord];
+    aoiRecord[id].isChecked = event.target.checked;
+    setAoiRecord(newItems);
+    setIsModified(true);
+   };
   
-      }
-      for (let i = 0; i < 10; i++) {
-      
-        let layer = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerName';
-        //  let geoviewlayerName = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerName';
-        let geoviewlayerId = 'map.listOfGeoviewLayerConfig[' + i + '].geoviewLayerId';
-        let layerId = 'map.listOfGeoviewLayerConfig[' + i + '].listOfLayerEntryConfig[0].layerId';
-        console.log("layer=", _.get(configJson, layer), layer);
-        m[i].value = (_.get(configJson, layer)); //use i instead of 0
-        m[i].value = (_.get(configJson, geoviewlayerId) + "/" + _.get(configJson, layerId)); //use i instead of 0
-       
-        // m[i].value = geoviewlayerId + "/" + layerId;
-        m[i].title = (_.get(configJson, layer)); //use i instead of 0
-        m[i].group = "n";
-        console.log("m =", m[i]);
-        if ((m[i].value) === 'undefined/undefined') { console.log("in break-------", m[i].value); break; };
-        if ((typeof m[i].title) === undefined) { break;
-      }
-       if ((m[i].value) !== 'undefined/undefined')
-      {   layerOptions.push(m[i]);  console.log("wrting to layeroptions =", m[i].value);}
+  function handleAdd() {
+    const newList = aoiRecord.concat({
+      id: aoiRecord.length + 1,
+      isChecked: false, title: " undefined ",
+      url: "http://  ",
+      extent: " "
+    });  
+    setAoiRecord(newList);
+    forceUpdate();
+    setIsModified(true);
+  }
+  
+  function handleSave() {
+    _.set(modifiedConfigJson, "corePackages", "aoi-panel");   // here this changes it
+   if (swiperDisplay.current ===1)
+      _.set(modifiedConfigJson, "corePackages", ["aoi-panel","swiper"]);
+   else
+      _.set(modifiedConfigJson, "corePackages", ["aoi-panel"]); // here this changes it
+    _.set(modifiedConfigJson, "corePackagesConfig[0].aoi-panel", "corePackagesConfig")
+    _.set(modifiedConfigJson, "corePackagesConfig[0].aoi-panel", "aoiList")
+    _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.isOpen', true);
+    _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.version', "1.0");
 
-       console.log("layerOptions =", layerOptions);
-      }
+    for (let i = 0; i < aoiRecord.length; i++) {
+      _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].imageUrl', aoiRecord[i].url);
+      _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].aoiTitle', aoiRecord[i].title);
+      ;
+       let extentstring2 = aoiRecord[i].extent;
     
-      for (let i = 0; i < 10; i++) {
-        if (m[i].title === "") {
-          delete m[i]; console.log("-------------compacting array");
+      if (typeof extentstring2 === "string") { // if edited type string else object
+        extentstring2 = aoiRecord[i].extent.replace("[", "").replace("]", "").replace("]", "");
+        let extentstring3 = extentstring2.split(",").map(Number);
+        _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].extent', extentstring3);
+      }
+      else {
+        _.set(modifiedConfigJson, 'corePackagesConfig[0].aoi-panel.aoiList[' + i + '].extent', aoiRecord[i].extent);
+      }
+    }      
+    aoiModified.current = 0;  //changed 10 of june or test 
+    setIsModified(true);
+    handleApplyConfigChanges();
+  }
+
+  function handleDelete() {
+    let newItems = aoiRecord.filter((item) => item.isChecked !== true);
+    setAoiRecord([...newItems]);
+    aoiModified.current = 1;
+    forceUpdate();
+    setIsModified(true);
+  }
+
+  const handleItemChangeTitle = (index: any, event: any) => {
+    aoiModified.current = 1; 
+    const newItems = [...aoiRecord];
+    aoiRecord[index].title = event.target.value;
+    setAoiRecord(newItems);
+    setIsModified(true);
+    
+  };
+
+  const handleItemChangeUrl = (index: any, event: any) => { //verify that image insists
+    aoiModified.current = 1; 
+    let imageError = false;
+    var image = new Image();
+    image.src = event.target.value;
+    image.onload = function () {
+      if (image.width > 0) {
+        enqueueSnackbar('URL link exists image,record updated');
+        imageError = true;
+      }
+    }
+    image.onerror = function () {
+      enqueueSnackbar('URL doesnt link to an image,record not updated');
+      imageError = false;
+      return;
+    }
+
+    if (!imageError) {
+      const newItems = [...aoiRecord];
+      aoiRecord[index].url = event.target.value;
+      setAoiRecord(newItems);
+      setIsModified(true);
+    }
+  };
+
+  const handleItemChangeExtent = (index: number, event: any) => {
+     aoiModified.current = 1; 
+    setExtentValue(event.target.value);
+    setAoiRecordIndex(index);
+    aoiRecord[index].extent = event.target.value;  
+    setIsModified(true);
+  };
+
+  const handleKeyDownExtent = (event: any) => {    // handel validatiaon of extent f=on return key
+  
+    if (event.key === 'Enter') {
+      // Logic to execute when "return" is pressed
+      let extendArr = extentValue.split(",");
+      if ((extendArr.length === 4)) {
+        const newItems = [...aoiRecord];
+        //validate extent entered
+        if (  extendArr[0].match(/^\s*[+-]?(?:\d+|\d{1,3}})(?:\.\d*)?$/)
+          && extendArr[1].match(/^\s*[+-]?(?:\d+|\d{1,3}})(?:\.\d*)?$/)
+          && extendArr[2].match(/^\s*[+-]?(?:\d+|\d{1,3}})(?:\.\d*)?$/)
+          && extendArr[3].match(/^\s*[+-]?(?:\d+|\d{1,3}})(?:\.\d*)?$/)
+        ) {
+     
+          setExtentError(false);
+          aoiRecord[aoiRecordIndex].extent = extentValue;
+          setAoiRecord(newItems);
+          setIsModified(true);
+          enqueueSnackbar('Extent is valid');
+       
+        } else {
+          enqueueSnackbar('Extent invalid', { variant: 'error' });
+          setExtentError(true);
         }
       }
-console.log("win plugin value=", window.geoviewPlugins['swiper']);
+      else if (extendArr.length < 4) {
+        enqueueSnackbar('Extent missign a value');
+        setExtentError(true);
+      }
+    }
     
-   console.log("before call");
-// from loading_packages.html
-  //      cgpv.api.plugin.addPlugin('swiper', 'sandboxMap', window.geoviewPlugins['swiper'], {
-   //        mapId:'sandboxMap',layerPaths:['nonmetalmines/5']
-  //       }); 
-      
-   //        cgpv.api.plugin.addPlugin('swiper', 'sandboxMap', window.packages['swiper'], {
-    //       mapId: 'sandboxMap',
-   //      }); 
-         console.log("afte call");
-  //windows[geoviewPlugins];
-//        cgpv.api.plugin.addPlugin('swiper', mapId ,window.geoviewPlugins['swiper'], {
- //          mapId: mapId,layerPaths:['nonmetalmines/5']
-   //   });
- //   
-  //  cgpv.api.plugin.addPlugin('swiper', mapId,      window.geoviewPlugins['swiper'], {
-  //         mapId: mapId,
-   //  }); 
+  };
+
+  const handleExtent = () => {
+    
+    const myMap = cgpv.api.getMapViewer(mapId);
   
-     // let configUrl = document.getElementById(mapId)?.getAttribute(');
-    //  let configUrl = (document.getElementsByName('data-config-url') as HTMLInputElement).value;
-      
-      //configUrl.setAttribute("", "");
-      //let configUrl2 =(document.getElementsByName('data-config-url') as HTMLInputElement).value
-      //document.getElementsByName('data-config-url').setAttribute('data-config-url', "default-config-swiper');
+    function initMap1(map : any) {
+      // Init extent interactions
+      const myMap = cgpv.api.getMapViewer(mapId); 
+      const extent1 = myMap.initExtentInteractions();
      
-      let configUrl = (document.getElementById(mapId) as HTMLInputElement).value;
-      //configUrl!.setAttribute('data-config-url', "");
-      
-      
-      // works
-     document.getElementById(mapId)!.setAttribute("data-config-url","default-config-swiper");
-         // (document.getElementById(mapId) as HTMLInputElement).value = "default-config-swiper";
-  
-
-      // configUrl.setAttribute('data-config-url','default-config-swiper");
-
-      //configUrl!. = "default-config-swiper.json";
-
-      //document.getElementById(mapId).getAttribute('data-config-url').innerHtml="default-config-swiper.json"
-
-      console.log("--- datacnfigurl=", configUrl );
-      cgpv.init(async () => {
-        
-        console.log("map viweer =", cgpv.api.getMapViewer(mapId));
-        return;
-          // getMapViewer(mapId).map.getView();
-        },
-      
-      );
-//console.log("map viweer =",cgpv.api.getMapViewer(mapId));
-      // 
-
-          console.log("map viweer =", cgpv.api.maps[mapId]);
-  //    const viewer = cgpv.api.maps[mapId];
- //const mapContainerDiv = document.getElementById('sandboxMapContainer');
-    //   cgpv.api.plugin.addPlugin('swiper', mapId, window.geoviewPlugins['swiper'], {
-       //     mapId: mapId, viewer:99,layerPaths:["esriFeatureLYR4/0"]
-  
-  
-      //   });
-
-
-      // to undo feb 21 2025
-    //  _.set(modifiedConfigJson , "corePackages", ["swiper"]);
-      if (reason !== "removeOption") {
-     
-        _.set(configJson, "corePackages", ["swiper"]);   // here this changes it
-      }
-
-     //_.set(configJson, "corePackagesConfig", []);   // here this changes it
-     
-  //    _.set(configJson, "corePackagesConfig", ["swiper","aoi"]);   // here this changes it
-   //    _.set(configJson, "corePackagesConfig", );   // here this changes it
-    
-        _.set(configJson, "corePackagesConfig[0].swiper.orientation", "vertical");   // here this changes it
-        _.set(configJson, "corePackagesConfig[0].swiper.layers", ["esriFeatureLYR4/0"]);   // here this changes it
-         _.set(configJson, "corePackagesConfig[0].swiper.keyboardOffset", "10");   // here this changes it
-      
-      //   _.set(configJson, "corePackagesConfig.aoi.orientation", "vertical");   // here this changes it
-     
-    
-     
-      setIsModified(true);
-
-     //  "corePackagesConfig": [
-     //   {
-       //     "swiper": {
-       //         "orientation": "horizontal",
-       //         "keyboardOffset": 10,
-       //         "layers": [
-        //            "esriFeatureLYR4/0"
-         //       ]
-          //  }
-      //  }
-  //  ]
-      if (reason !== "removeOption") {
-      //  updateArrayProperty("corePackages", ["swiper"]);  // not here
-        //handleConfigJsonChange;
-        handleApplyConfigChanges(); //workss
-      }
-      else {
-       // updateArrayProperty("corePackages", []);
-           _.set(configJson, "corePackages", []);   // here this changes it
-    
-     //   cgpv.api.maps[mapId].plugins['swiper'].deActivateAll(value);
-         handleApplyConfigChanges(); //workss
-      }
-
-      // handleApplyStateToConfigFile();
-     
-      // document.getElementById("handleApplyConfigChanges").click();
-      console.log('value =',value);
-   
-   //   if (value.find((element: any) => element === "swiper"))
-  //    { //handleApplyConfigChanges(); 
-   //     console.log("");}
-      
-      //document.getElementById("handleApplyStateToConfigFile").click();
-      
-     // handleApplyStateToConfigFile();
-      
-        setTimeout( () => { setSwiper(true);} , 55000);
-      //cgpv.api.maps[mapId].plugins['swiper'].activateForLayer("esriFeatureLYR4/0");
-
-         console.log("after updating json config",getProperty('corePackages'));
-/*
-      if (value.find((element: any)=> element ==="area-of-interest")) {
-        cgpv.api.plugin.addPlugin('aoi-panel', mapId, window.geoviewPlugins['aoi-panel'], {
-          mapId: mapId,
-        });
-      }
-      if (value.find((element: any) => element ==="geochart")) {
-        cgpv.api.plugin.addPlugin('geochart', mapId, window.geoviewPlugins['geochart'], {
-          mapId: mapId,
-        });
-      }
-        
-      if (value.find((element: any) => element ==="time-slider")) {
-        cgpv.api.plugin.addPlugin('time-slider', mapId, window.geoviewPlugins['time-slider'], {
-          mapId: mapId,
-        });
-      }
-      if (value.find((element: any) => element === "basemap-panel")) {
-            cgpv.api.plugin.addPlugin('basemap-panel', mapId, window.geoviewPlugins['basemap-panel'], {
-                mapId: mapId,
-              });
-      }
-   */   
-     //   cgpv.api.plugin.addPlugin('swiper', mapId ); 
-      setTimeout(activateLayer, 5000);
-      console.log("1 active layers=", cgpv.api.maps[mapId].layer.featureInfoLayerSet.resultSet);
-
-  cgpv.init(
-        () => {
-          // write some code ...
-        },
-       
-      );
-
-// setTimeout(cgpv.api.maps[mapId].plugins['swiper'].activateForLayer('nonmetalmines/5'), 95000);
-     
-  //    cgpv.api.maps[mapId].plugins['swiper'].activateForLayer('nonmetalmines/5');
-
-      window.geoviewPlugins = window.geoviewPlugins || {};
-      
-     // console.log(' added windows object',mapId,);
-  
-    //  console.log("swiper=", cgpv.api.maps[mapId].plugins['swiper']);
-      
-    //  console.log("1 mapId=", cgpv.api.maps[mapId]);
-     //  cgpv.api.maps[mapId].plugins['swiper'].activateForLayer('nonmetalmines/5');
-    
-    
-      // consolle.log("swiper=",cgpv.api.maps[mapId].plugins['swiper']);
-
-  //  cgpv.api.maps[mapId].plugins['swiper'].deActivateAll();
-  ////  cgpv.api.maps[mapId].plugins['swiper'].activateForLayer('nonmetalmines/5');
-    //   setSwiper(true);
+      extent1.onExtentChanged((sender :any , payload : any) => {
+        proj4.defs("EPSG:3978", "+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
+        register(proj4);
+        proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
+        register(proj4);
+        const extentInLatLon = transformExtent(myMap.getView().calculateExtent(), "EPSG:3978", "EPSG:4326");     
+        aoiRecord[aoiRecordIndex].extent=extentInLatLon.toString()  //changed jul 2
+        aoiModified.current = 1;   
+        forceUpdate();
+      });
+    }
+    cgpv.init(initMap1(myMap));// added june 23 
   }
-  
+
+
   return(
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       <FormControl component="fieldset" sx={{ mt: 1, gap: 3 }}>
@@ -503,7 +487,8 @@ console.log("win plugin value=", window.geoviewPlugins['swiper']);
           <Button 
            style={{ maxWidth: '30px', maxHeight: '40px', minWidth: '100px', minHeight: '40px' }}
            onClick={(event) => {
-              (isMapSizeValid )? handleApplyStateToConfigFile() : enqueueSnackbar('Map size is invalid');
+             (isMapSizeValid) ? handleApplyStateToConfigFile() : enqueueSnackbar('Map size is invalid');
+  
            }
           }
 
@@ -533,14 +518,48 @@ console.log("win plugin value=", window.geoviewPlugins['swiper']);
         Apply State to Config File
       </Button>
 
-      <FormControl component="fieldset" sx={{ mt: 4, gap: 3 }}>
+        <Divider sx={{ my: 2 }} >Geocore Layer</Divider>
+      <FormGroup aria-label="position">
+      <Box sx={{ display: 'flex', flexDirection: 'row', mt: 1, gap: 1}}>
+      <FormControl> 
+        <TextField
+          style={{ maxWidth: '330px', maxHeight: '30px', minWidth: '330px', minHeight: '30px' }}
+          error={!isMapSizeValid}
+          size="small"
+          id="geocore-id"
+          label="Enter Geocore ID"
+          onChange={(event) => {
+            if (event.target.value.match(/[a-zA-Z0-9_-]{36}$/)) {
+              SetGeocoreFileSelected(true);
+              setGecoreId(event.target.value);
+            }
+            else {
+              enqueueSnackbar("Geocore ID must be 36 characters");
+             }
+            }
+           }
+        />  
+          </FormControl>
+          <FormControl>
+        <Button variant="contained" color="primary" 
+            style={{ maxWidth: '40px', maxHeight: '40px', minWidth: '40px', minHeight: '40px' }}
+          onClick={(event) => {
+            if (geocoreFileSelected){
+              const myMap = cgpv.api.getMapViewer(mapId);
+              myMap.layer.addGeoviewLayerByGeoCoreUUID(geocoreId); 
+              setTimeout(() => loadGeocoreMap(geocoreId), 7000); //wait for file load
+             }
+          }} >
+          ADD
+            </Button>
+          </FormControl>
+          
+        </Box>
+        </FormGroup>
 
-        <SingleSelectComplete
-          options={CONFIG_FILES_LIST}
-          defaultValue={configFilePath}
-          applyGrouping={true}
-          onChange={(value) => handleConfigFileChange(value)}
-          label="Select Configuration File" placeholder="" />
+      <Divider sx={{ my: 2 }} >Map Configuration</Divider>
+
+      <FormControl component="fieldset" sx={{ mt: 4, gap: 3 }}>
 
         <FormGroup aria-label="position">
           <FormLabel component="legend">Map Size</FormLabel>
@@ -668,7 +687,10 @@ console.log("win plugin value=", window.geoviewPlugins['swiper']);
           </FormLabel>
           <PillsAutoComplete
             defaultValue={getProperty('footerBar.tabs.core')}
-            onChange={(value) => updateArrayProperty('footerBar.tabs.core', value)}
+            onChange={(value) => {
+              updateArrayProperty('footerBar.tabs.core', value);            
+             }
+            }
             options={footerTabslist} label="Footer Options" placeholder="" />
         </FormGroup>
 
@@ -681,124 +703,308 @@ console.log("win plugin value=", window.geoviewPlugins['swiper']);
           </FormLabel>
           <PillsAutoComplete
             defaultValue={getProperty('appBar.tabs.core')}
-            onChange={(value) => updateArrayProperty('appBar.tabs.core', value)}
+            onChange={(value: any, reason: any, selectedvalue: any) => {
+            updateArrayProperty('appBar.tabs.core', value);
+              if ((value.find((element: any) => element === "aoi-panel")) && (reason == "selectOption")) {
+                displayLayers.current = 2;
+                aoiDisplay.current = 2;
+                setAoiChecked(true);
+                setAoiIsDisabled(false);
+              }
+              else if ((selectedvalue === "aoi-panel") && (reason == "removeOption")) {
+                displayLayers.current = 0; 
+                aoiDisplay.current = 0;
+                setAoiChecked(false);
+                setAoiIsDisabled(true);  
+                forceUpdate;
+                }
+              }
+            }
             options={appBarOptions} label="App-bar Options" placeholder="" />
         </FormGroup>
+
+        <Divider sx={{ my: 2 }} >Packages</Divider>
 
         <FormGroup aria-label="Core Packages Options">
           <FormLabel component="legend">Core Packages</FormLabel>
           <PillsAutoComplete
            
             defaultValue={getProperty('corePackages')}
-            onChange={(value: any, reason: any) => {
+            onChange={(value: any, reason: any, selectedvalue: any) => {
               updateArrayProperty('corePackages', value);
-              console.log("calling handle package change",typeof value,value);
-              if ((value === "swiper")&& (reason == "selectOption")) {
-                console.log("settin gto display layers");
+              if ((selectedvalue === "swiper") && (reason == "selectOption")) {
+                setIsModified(true);
                 displayLayers.current = 1;
+                swiperDisplay.current = 1; 
+                setChecked(true); // added july 19
+                createLayerList();
+                handlePackageChange('corePackages', value, reason, selectedvalue);
               }
-                handlePackageChange('corePackages', value,reason);
-               console.log("calling handle package change reson=",reason);
-           
-            
-              //  handleApplyStateToConfigFile();
+              else if((selectedvalue === "swiper") && (reason == "removeOption"))
+              {
+                //have to set color of swiper label or stay dispayed even though disabled,unchecked
+                setItemColor('white');
+                displayLayers.current = 0;
+                swiperDisplay.current = 0;
+                setChecked(false);
+                setIsDisabled(true);
+                if (aoiDisplay.current === 2) {
+                  _.set(modifiedConfigJson, "corePackages", ["aoi-panel"]);
+                }
+                else {
+                  _.set(modifiedConfigJson, "corePackages", []);
+                }    
+                handleApplyConfigChanges();// screen doesnt refresh on deploy, to erase swuper config unless reboot jul 23
+              }
+              setIsModified(true);
             }}
             options={corePackagesOptions}
             label="CorePackages Options" placeholder="" />
-        </FormGroup>
-
-        
-      
-        <FormGroup aria-label="Layer List"  >
-          {displayLayers.current === 1 ?
           
+        </FormGroup>
+     
+       <FormGroup aria-label="Layer List"  >
+         
+          
+          
+           {swiperDisplay.current === 1 ?  // swiper
+            <FormControlLabel id="swiper" sx={{color: itemColor ,
+              justifyContent: 'flex-end',
+              alignItems: 'baseline',
+              }}
+            
+              label="Swiper Config"    
+              disabled={isDisabled}
+              control={<Switch checked={checked} onChange={handleChange}
+              sx={{
+                      "& .MuiInputBase-root.Mui-disabled": {
+                    },
+                      "& .MuiFormLabel-root.Mui-disabled": {
+                        color: "rgba(0, 0, 0,0.0)"
+                    },
+                      "&.Mui-disabled": {
+                    },
+                      '& .MuiFormControlLabel-label': {
+                        color: itemColor, // Set your desired color here
+                    },
+                      '& .css-1nweas-MuiFormControlLabel-root.MuiFormControlLabel-label.Mui-disabled': {
+                        color: 'rgba(0,0,0,0)', // Set your desired color here
+                    },
+                      '& .MuiFormControlLabel-root': {
+                        color: itemColor, // Set your desired color here
+                    },          
+                      "&.MuiSwitch-root .MuiSwitch-switchBase": {
+                    },
+                      "& .MuiSwitch-thumb": {
+                        color: itemColor
+                    },
+                      "& .MuiSwitch-track": {  // if dont sepecify is grey
+                         backgroundColor: "white",// works is white when collapse jul  21
+                    },
+                  }}
+              
+                />}
+               labelPlacement="start"
+          />
+          : ''}
+           
+          <Collapse in={checked}>
+            
             <SingleSelectComplete
-            options={SwiperPackageOrientation}
-            defaultValue={getProperty('corePackagesConfig[0].swiper.orientation')}
+              options={SwiperPackageOrientation}
+              defaultValue={getProperty('corePackagesConfig[0].swiper.orientation')}
               onChange={(value) => {
                 updateProperty('corePackagesConfig[0].swiper.orientation', value);
                 _.set(configJson, "corePackagesConfig[0].swiper.orientation", value);   // here this changes it
-                 handleApplyConfigChanges();
-              }}
-            label="Swiper Orientation" placeholder="" />
-       
+                handleApplyConfigChanges();
+                }
+              }
+              label="Swiper Orientation" placeholder="" />
           
-            : ''}
+            <Divider sx={{ my: 2 }} />
           
-          <Divider sx={{ my: 2 }} />
-          {
-            //  corePackages.some(el => el.value === 'swiper') ?
-                   displayLayers.current === 1 ?
-            //  swiper ?  refreshe to much
+            <SingleSelectComplete
+              options={SwiperPackagekeyboardOffset}
+              defaultValue={getProperty('corePackagesConfig[0].swiper.keyboardOffset')}
+              onChange={(value) => {
+                updateProperty('corePackagesConfig[0].swiper.keyboardOffset', value);
+                _.set(configJson, "corePackagesConfig[0].swiper.keyboardOffset", value);   // here this changes it
+                handleApplyConfigChanges();
+                }
+              }
+              label="Swiper Keyboard Offset" placeholder="" />
+          
+              <Divider sx={{ my: 2 }} />
            
-            
-            //   <SingleSelectComplete
               <PillsAutoComplete
-              options={layerOptions}
-              //       defaultValue={ _.mapValues( configJson, 'geoviewLayerNa')}
-       //      defaultValue={ _.mapValues( configJson, 'geoviewLayerId')}
-          defaultValue={ layerOptions}
-                //  multiple = "true"
-               
-                onChange={( value: any, reason: any) => {
-         //            console.log("onchange event=" ,event);
-     console.log("onchange value=" ,value);
-
-              console.log("onchange reason=" ,reason);
-
-          //          if (reason === 'remove-option') {
-        //      console.log(detail.option);
-        //    };
-                //  console.log("props=", props);
-                  updateProperty('map.listOfGeoviewLayerConfig[].geoviewLayerId', value);
-                  console.log('laysers=', getProperty('map.listOfGeoviewLayerConfig.geoviewLayerName'));
-                  //  cgpv.api.maps[mapId].plugins['swiper'].activateForLayer('nonmetalmines/5');
-                  console.log("selceted file value for plugin=",event, value);
-                 //   console.log("selceted  value for selected=", target.checked);
-               
-         /*         value.forEach((element: any) => {
-                    let index = layerOptions.indexOf(element);
-                    console.log("layer index=", index);
-                    if (index !== -1) {
-                      if (layerOptions[index].group === "n") {
-                        layerOptions[index].group = "y";
-                      }
-                      else { layerOptions[index].group = "n";
+                options={layerOptions}
+                defaultValue={getProperty('corePackagesConfig[0].swiper.layers')}
+                onChange={( value: any, reason: any,value2) => {
+                  updateProperty('corePackagesConfig[0].swiper.layers', value);
+                  if (reason === "selectOption") {
+                    const myMap = cgpv.api.getMapViewer(mapId);
+                    value.forEach((i : any) => myMap.plugins['swiper'].activateForLayer(i));              
+                    updateArrayProperty('corePackagesConfig[0].swiper.layers', value);
+                    setIsModified(true);   
                     }
-                    }
-                    if (reason === "selectOption") {
-                      cgpv.api.maps[mapId].plugins['swiper'].activateForLayer(element);
-                    }
-                    else if (reason === "removeOption") {
-                      console.log('deactivating layer=',element)
-                      cgpv.api.maps[mapId].plugins['swiper'].deActivateForLayer(element);
-                    }
-                  });
-               */ 
-                   if (reason === "selectOption") {
-                     cgpv.api.maps[mapId].plugins['swiper'].activateForLayer(value);
-                       _.set(configJson, "corePackagesConfig[0].swiper.layers[0]", value);   // here this changes it
-       
-                    }
-                    else if (reason === "removeOption") {
-                      console.log('deactivating layer=',value)
-                     cgpv.api.maps[mapId].plugins['swiper'].deActivateForLayer(value);
-                            _.omit(configJson, "corePackagesConfig[0].swiper.layers["+value+"]");   // here this changes it
-       
-                    }
-
-
+                  else if (reason === "removeOption") {
+                    const myMap = cgpv.api.getMapViewer(mapId);
+                    myMap.plugins['swiper'].deActivateForLayer(value2);
+                    updateArrayProperty('corePackagesConfig[0].swiper.layers', value);                       
+                  }  
                 }}
-              
               label="Swiper Layer List" placeholder="" /> 
-            //: ''
-             : ''
-          }
+                 
+            </Collapse>
         </FormGroup>
+  
+        <FormGroup aria-label="Layer List"  >
+        
+          
+         {aoiDisplay.current === 2 ? 
+           
+            <FormControlLabel  sx={{
+              justifyContent: 'flex-end', color: itemColor ,
+              alignItems: 'baseline'
+              //, color: 'primary'
+             }}
+              label="Aoi Config"
+              control={<Switch checked={aoiChecked} onChange={handleChangeAoi}
+              disabled={isAoiDisabled}
+              sx={{
+                      "& .MuiInputBase-root.Mui-disabled": {
+                    },
+                      "& .MuiFormLabel-root.Mui-disabled": {
+                        color: "rgba(0, 0, 0,0.0)"
+                    },
+                      "&.Mui-disabled": {
+                    },
+                      '& .MuiFormControlLabel-label': {
+                        color: itemColor, // Set your desired color here 
+                    },
+                      '& .css-1nweas-MuiFormControlLabel-root.MuiFormControlLabel-label.Mui-disabled': {
+                        color: 'rgba(0,0,0,0)', // Set your desired color here
+                    },
+                      '& .MuiFormControlLabel-root': {
+                        color: itemColor, // Set your desired color here
+                    },
+                      "&.MuiSwitch-root .MuiSwitch-switchBase": {
+                    },
+                      "& .MuiSwitch-thumb": {
+                        color: itemColor
+                    },
+                      "& .MuiSwitch-track": {  // if dont sepecify is grey
+                        backgroundColor: "white",// works is white when collapse jul  21
+                    },
+                  }}
+                  /> 
+              }
+              labelPlacement="start"
+            />
+            : ''}
+    
+          <Collapse in={aoiChecked}>
+    
+            <Button onClick={handleAdd} 
+              variant="contained" color="primary" size="small"
+            >
+            Add
+            </Button>
+            
+            <Tooltip title="Select item(s) using item checkbox">
+              <Button onClick={handleDelete}
+                variant="contained"
+                color="primary"
+                size="small"
+              >
+                Delete
+              </Button>
+            </Tooltip>
+
+            <Button onClick={handleSave}
+              variant="contained" color="primary" size="small"
+            >
+               Save
+            </Button>
+            <Tooltip title="zoom to location,press shift and hold, mouse cick to draw extent">
+              <Button onClick={handleExtent}
+               variant="contained"
+               color="primary"
+              size="small"
+              
+            >
+                 Create extent
+              </Button>
+              </Tooltip>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, border: "1px solid #e1e1e1",
+                overflow: 'auto', '&::-webkit-scrollbar': { width : 50 }
+             }}>              
+              
+              
+              <Stack direction={{ xs: 'column', sm: 'column' }} spacing={3} >
+                      
+                <List style={{ display: "flex", flexWrap: "wrap", flexDirection: "column",
+                               borderCollapse: 'collapse'
+                  }}>
+             
+                  {aoiRecord.map((item,index) => (
+                    
+                     <ListItem key={index} style={{ display: 'flex', flexDirection: 'column',
+                       border: '1px solid black', borderStyle: 'solid'
+                      }}>
+
+                       <input style={{ display: 'flex'  }}
+                        // adds between reacords , border: '1px solid black', borderStyle: 'solid'
+                    
+                          type="checkbox"
+                          className="form-check-input"
+                            onChange = {(event)  => handleChangeChecked(event, index)}
+                        />
+                     
+                       <TextField style={{ display: 'flex', flexDirection: 'column',
+                         borderStyle: 'solid',maxWidth: '30px', maxHeight: '40px', minWidth: '390px', minHeight: '40px' 
+                        }}
+                         label="Title"
+                         value={item.title}
+                         onChange={(event) => handleItemChangeTitle(index, event)} />
+                      
+                       <Divider sx={{ my: 2 }} />
+                      
+                       <TextField style={{ display: 'flex', flexDirection: 'column', maxHeight: '40px',
+                         minWidth: '390px', minHeight: '40px', borderStyle: 'solid'
+                         }}
+                         label="Url"
+                         value={item.url}
+                         onChange={(event) => handleItemChangeUrl(index, event)} />
+                    
+                       <Divider sx={{ my: 2 }} />
+
+                       <TextField style={{display: 'flex', flexDirection: 'column',maxHeight:'40px', minWidth: '390px', minHeight: '40px' ,
+                         borderStyle: 'solid'
+                         }}
+                         label="Extent format [xmin, ymin, xmax, y max]"
+                         value={item.extent}
+                         error={extentError}
+                         onKeyDown={handleKeyDownExtent}  // called when return key is pressed
+                        onChange={(event) => handleItemChangeExtent(index, event)}/>
+                        
+                       <br></br>
+                     </ListItem>
+        
+                     ))}
+                </List>
+              </Stack>                   
+            </Box>
+        
+          <Divider sx={{ my: 2 }} />
+
+          </Collapse>
+          
+          </FormGroup>
+          
 
       </FormControl>
     </Box>
-     // :''    ,  put this before  //  { getProperty('layerOptions') === 'swiper' ?
 
   );
   
