@@ -68,8 +68,9 @@ export function MapBuilder() {
   const [aoiRecord, setAoiRecord] = useState(aoiFuncs);
   const [extentValue, setExtentValue] = useState('');
   const [extentError, setExtentError] = useState(false);
-  const [aoiRecordIndex, setAoiRecordIndex] = useState(0);
+  const [aoiRecordIndex, setAoiRecordIndex] = useState(-1);
   const [itemColor, setItemColor] = useState('#1976d2');
+ 
 
   useEffect(() => {
     if (document.getElementById(mapId) !== null) { 
@@ -153,6 +154,8 @@ export function MapBuilder() {
             displayLayers.current = 1; //0 if loading from a file on iniial load
             aoiDisplay.current = 2;
             setAoiChecked(true); 
+            let maxlayerId2: any = _.get(configJson, "corePackagesConfig[0].aoi-panel.aoiList"); // set record index on file load
+            setAoiRecordIndex(maxlayerId2.length-1);  
            }
            if (aoiModified.current === 0) { // like useRef, not modified if reloads  
              while (aoiFuncs.length > 0) {
@@ -183,7 +186,7 @@ export function MapBuilder() {
                 aoiFuncs[i3].isChecked = false;
                 i3++;
               } //for loop
-            } // index is not  undefined       
+            } // index is not  undefined    
           } //aoimodified
         };
       }; 
@@ -279,7 +282,8 @@ export function MapBuilder() {
     setAoiRecord(newList);
     forceUpdate();
     setIsModified(true);
-  }
+    setAoiRecordIndex(aoiRecordIndex + 1); 
+  };
 
   function handleSave() {
     _.set(modifiedConfigJson, "corePackages", "aoi-panel");
@@ -405,23 +409,24 @@ export function MapBuilder() {
 
   const handleExtent = () => {
     const myMap = cgpv.api.getMapViewer(mapId);
-
-    function initMap1(map : any) {
-      // Init extent interactions
-      const myMap = cgpv.api.getMapViewer(mapId); 
-      const extent1 = myMap.initExtentInteractions();
-      extent1.onExtentChanged((sender :any , payload : any) => {
-        proj4.defs("EPSG:3978", "+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
-        register(proj4);
-        proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
-        register(proj4);
-        const extentInLatLon = transformExtent(myMap.getView().calculateExtent(), "EPSG:3978", "EPSG:4326");
-        aoiRecord[aoiRecordIndex].extent=extentInLatLon.toString()
-        aoiModified.current = 1;   
-        forceUpdate();
-      });
-    }
-    cgpv.init(initMap1(myMap));
+    let projection = myMap.getProjection();
+    projection = projection.code_  as string;
+    proj4.defs("EPSG:3857", "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs");
+    register(proj4);
+    proj4.defs("EPSG:3978", "+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
+    register(proj4);
+    proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
+    register(proj4);
+    let extentInLatLon : any = [];
+    if (projection.includes("EPSG:3857"))
+      extentInLatLon = transformExtent(myMap.getView().calculateExtent(), "EPSG:3857", "EPSG:4326");
+    else if (projection.includes("EPSG:3978"))
+      extentInLatLon = transformExtent(myMap.getView().calculateExtent(), "EPSG:3978", "EPSG:4326");
+    aoiRecord.filter(function(item) { if (item.isChecked === true){
+    item.extent=extentInLatLon[0].toFixed(5).toString()+","+extentInLatLon[1].toFixed(5).toString()+","+extentInLatLon[2].toFixed(5).toString()+","+extentInLatLon[3].toFixed(5).toString();
+   }});
+   aoiModified.current = 1;
+   forceUpdate();
   }
 
   return(
@@ -900,7 +905,7 @@ export function MapBuilder() {
               variant="contained" color="primary" size="small">
                Save
             </Button>
-            <Tooltip title="zoom to location,press shift and hold, mouse cick to draw extent">
+            <Tooltip title="zoom to location,map window will be extent, click create extent button">
               <Button onClick={handleExtent}
                variant="contained"
                color="primary"
