@@ -68,8 +68,9 @@ export function MapBuilder() {
   const [aoiRecord, setAoiRecord] = useState(aoiFuncs);
   const [extentValue, setExtentValue] = useState('');
   const [extentError, setExtentError] = useState(false);
-  const [aoiRecordIndex, setAoiRecordIndex] = useState(0);
+  const [aoiRecordIndex, setAoiRecordIndex] = useState(-1);
   const [itemColor, setItemColor] = useState('#1976d2');
+ 
 
   useEffect(() => {
     if (document.getElementById(mapId) !== null) { 
@@ -279,7 +280,8 @@ export function MapBuilder() {
     setAoiRecord(newList);
     forceUpdate();
     setIsModified(true);
-  }
+    setAoiRecordIndex(aoiRecordIndex+1); 
+  };
 
   function handleSave() {
     _.set(modifiedConfigJson, "corePackages", "aoi-panel");
@@ -369,6 +371,7 @@ export function MapBuilder() {
   const handleItemChangeExtent = (index: number, event: any) => {
     aoiModified.current = 1; 
     setExtentValue(event.target.value);
+    console.log("handle item change extent index=",index);
     setAoiRecordIndex(index);
     aoiRecord[index].extent = event.target.value;  
     setIsModified(true);
@@ -406,7 +409,7 @@ export function MapBuilder() {
   const handleExtent = () => {
     const myMap = cgpv.api.getMapViewer(mapId);
 
-    function initMap1(map : any) {
+    function initMap1(map : any,aoiRecordIndex:number) {
       // Init extent interactions
       const myMap = cgpv.api.getMapViewer(mapId); 
       const extent1 = myMap.initExtentInteractions();
@@ -416,12 +419,12 @@ export function MapBuilder() {
         proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
         register(proj4);
         const extentInLatLon = transformExtent(myMap.getView().calculateExtent(), "EPSG:3978", "EPSG:4326");
-        aoiRecord[aoiRecordIndex].extent=extentInLatLon.toString()
-        aoiModified.current = 1;   
+        aoiRecord[aoiRecordIndex].extent=extentInLatLon[0].toFixed(5).toString()+","+extentInLatLon[1].toFixed(5).toString()+","+extentInLatLon[2].toFixed(5).toString()+","+extentInLatLon[3].toFixed(5).toString();
+        aoiModified.current = 1;
         forceUpdate();
       });
     }
-    cgpv.init(initMap1(myMap));
+    cgpv.init(initMap1(myMap,aoiRecordIndex));
   }
 
   return(
