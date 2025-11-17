@@ -11,6 +11,8 @@ export const eventLoopCounter = { current: 0 };
 export const aoiModified = { current: 0 };
 export const aoiDisplay = { current: 0 };
 export const swiperDisplay = { current: 0 };
+export const timeSliderDisplay = { current: 0 };
+export const timeSliderModified = { current: 0 };
 export const Language = { english: true };  // save language state
 
 export const DEFAULT_CONFIG = {
@@ -194,6 +196,90 @@ export const SwiperPackageLayers: ListOptionType[] = [
 ];
 
 export const layerOptions: ListOptionType[] = [
+];
+
+export const timeSliderLocked: ListOptionType[] = [
+  { title: 'unlocked', value: 'false' },
+  { title: 'locked', value: 'true' }
+];
+
+export const sliderLocked: ListOptionType[] = [
+  { title: 'unlocked', value: 'false' },
+  { title: 'locked', value: 'true' }
+];
+
+export const timeSliderFiltering: ListOptionType[] = [
+  { title: 'true', value: "true" },
+  { title: 'false', value: "false" }
+];
+
+export const SliderReversed: ListOptionType[] = [
+  { title: 'reversed', value: "true" },
+  { title: 'unreversed', value: "false" }
+];
+
+export const timeSliderDefaultValue: ListOptionType[] = [
+  { title: 'true', value: "true" },
+  { title: 'false', value: "false" }
+];
+
+export const timeSliderLayerPath: ListOptionType[] = [
+];
+
+export const timeSliderTemporaralDimensionField: ListOptionType[] = [
+  { title: 'Field', value: "time_slider_date" },
+];
+
+export const timeSliderTemporaralDimensionDefault: ListOptionType[] = [
+  { title: 'start', value: "time_slider_date" },
+  { title: 'End', value: "time_slider_date" },
+];
+
+export const timeSliderTemporaralDimensionUnitSymbol: ListOptionType[] = [
+  { title: 'start', value: "time_slider_date" },
+];
+
+export const timeSliderTemporalDimensionRange: ListOptionType[] = [
+  { title: 'start', value: "time_slider_date" },
+];
+
+export const timeSliderTemporalDimensionNearestValue: ListOptionType[] = [
+  { title: 'absolute', value: "absolute" },
+  { title: 'discrete', value: "discrete" }
+];
+
+export const timeSliderTemporalDimensionSingleHandle: ListOptionType[] = [
+  { title: 'true', value: "true" },
+  { title: 'false', value: "false" }
+];
+
+export const timeSliderDatePrecision: ListOptionType[] = [
+  { title: 'day', value: "day" },
+  { title: 'year', value: "year"},
+  { title: 'month', value: "month" },
+]
+
+export const timeSliderTemporalDimensionDisplayTimePrecision: ListOptionType[] = [
+  { title: ' ', value: "" },
+  { title: 'hour', value: "hour" },
+  { title: 'minute', value: "minute" },
+  { title: 'second', value: "second" }
+];
+
+export const timeSliderTemporalDimensionMinRange: ListOptionType[] = [
+];
+
+export const timeSliderDelay: ListOptionType[] = [
+  { title: '500', value: 500},
+  { title: '750', value: 750},
+  { title: '1000', value: 1000},
+  { title: '1500', value: 1500},
+  { title: '2000', value: 2000},
+  { title: '3000', value: 3000},
+  { title: '5000', value: 5000}
+];
+
+export const timeSliderLayers: ListOptionType[] = [ 
 ];
 
 export const zoomOptions: ListOptionType[] = _.range(0, 51).map((value) => ({ title: value.toString(), value }));
