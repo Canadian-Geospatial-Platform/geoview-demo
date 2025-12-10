@@ -1,6 +1,5 @@
-import React, { useContext, useEffect, useReducer, useRef} from 'react';
-import { AppBar, CssBaseline,   Button,
-  FormGroup,  Switch,
+import React, { useContext, useEffect, useRef} from 'react';
+import { AppBar, CssBaseline,
   IconButton, Toolbar, Typography , Menu , MenuItem, Link} from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { CGPVContext } from '../providers/cgpvContextProvider/CGPVContextProvider';
@@ -13,11 +12,8 @@ import {  ImperativePanelHandle,Panel, PanelGroup, PanelResizeHandle } from "rea
 import { useState } from 'react';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DrawerTabs from './DrawerTabs';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import { GEOVIEW_CORE_URL } from "@/constants";
 import {panelSize} from '@/constants';
-
-
 
 interface GeoViewMapProps {
   showConfigEditor?: boolean;
@@ -26,10 +22,6 @@ interface GeoViewMapProps {
   codeSnippet?: string;
   bottom?: React.ReactNode;
 }
-
- let mapWidth2=0;
-
-
 
 function GeoViewMap(props: GeoViewMapProps) {
   const cgpvContext = useContext(CGPVContext);
@@ -44,15 +36,10 @@ function GeoViewMap(props: GeoViewMapProps) {
   const handleClose = () => {
     setAnchorEl(null);
   };
-  
-   
-  
+
   if (!cgpvContext) {
     throw new Error('CGPVContent must be used within a CGPVProvider');
   }
-
-  const {  handleApplyStateToConfigFile
-     } = cgpvContext;
 
   const { configFilePath, initializeMap, isInitialized } = cgpvContext;
 
@@ -61,16 +48,9 @@ function GeoViewMap(props: GeoViewMapProps) {
   const [isClosing, ] = React.useState(false);
 
   const {setMapWidth} = cgpvContext;
-  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
-
-   const [panelExpanded, setPanelOpen] = React.useState(false);
-
-   const [itemColor,] = useState('#1976d2');
-
-    const mapWidthRef= useRef<HTMLButtonElement>(null);
 
   const handlePanel1Resize = (size : any) => {
     panelSize.current = (window.innerWidth - (435 +7))* (size*.01);
@@ -79,12 +59,6 @@ function GeoViewMap(props: GeoViewMapProps) {
   const {
     children
   } = props;
-
-  useEffect(() => {
-      // commendted dec 3   setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
-        console.log("window width=",window.innerWidth - (435 +7));
-        forceUpdate();
-  }, [mapWidth2]);
 
   useEffect(() => {
     if(!isInitialized) {
@@ -101,16 +75,6 @@ function GeoViewMap(props: GeoViewMapProps) {
     }
   }, [configFilePath]);
 
-  const handleChangePanel = () => {
-     setPanelOpen(!panelExpanded);
-      leftPanelRef.current!.isCollapsed() ?  leftPanelRef.current!.expand() :  leftPanelRef.current!.collapse() ;
-    if ( leftPanelRef.current!.isCollapsed()) {
-       rightPanelRef.current!.resize(100) ; 
-      mapWidthRef.current!.click();
-      setTimeout(() => { mapWidthRef.current!.click() }, 10000);  //works, must resize pabnel before ?
-    }
-  };
-
   const handleDrawerToggle = () => {
     if (!isClosing) {
       setMobileOpen(!mobileOpen);
@@ -118,7 +82,7 @@ function GeoViewMap(props: GeoViewMapProps) {
   };
 
   return (
-  
+
     <PanelGroup direction="horizontal"  >
        <Panel  style={{overflowY: 'auto',  height: '119vh' } }
           collapsible
@@ -126,14 +90,10 @@ function GeoViewMap(props: GeoViewMapProps) {
           maxSize={DEFAULT_LEFT_PANEL_MAX_WIDTH}
           defaultSize={DEFAULT_LEFT_PANEL_WIDTH} // panel size
           ref={leftPanelRef} 
-          onResize={ (number)=> { console.log("left panel resized to:", number) ;
-               setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
-               mapWidth2 = (window.innerWidth - (435 +7));
-               panelSize.current = (window.innerWidth - (435 +7));
-               forceUpdate();
-           } }
-   
-       >
+          onResize={ (number)=> {
+            setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
+            panelSize.current = (window.innerWidth - (435 +7));
+          } }>
         {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
 
        <DrawerTabs />
@@ -145,8 +105,7 @@ function GeoViewMap(props: GeoViewMapProps) {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
+            sx={{ mr: 2, display: { sm: 'none' } }}>
             <MenuIcon />
           </IconButton>
 
@@ -160,58 +119,11 @@ function GeoViewMap(props: GeoViewMapProps) {
          maxSize= {DEFAULT_RIGHT_PANEL_MAX_WIDTH}
          ref= {rightPanelRef} 
          onResize= {handlePanel1Resize}
-         defaultSize= {DEFAULT_RIGHT_PANEL_WIDTH}
-       >
-
+         defaultSize= {DEFAULT_RIGHT_PANEL_WIDTH}>
         <Toolbar  sx={{backgroundColor: 'rgb(25, 118, 210 )'
           }}>
       {children}
-       <FormGroup aria-label="Layer List"  >
-                 <label style={{ color: itemColor ,
-                 justifyContent: 'left',
-              alignItems: 'left',}}>
-     
-         </label>
-           <FormControlLabel id="swiper" sx={{ justifyContent: 'flex-end', alignItems: 'baseline',}}
-              label=""
-              control={<Switch checked={panelExpanded} onChange={ handleChangePanel}
-              sx={{
-                    "& .MuiInputBase-root.Mui-disabled": {
-                    },
-                    "& .MuiFormLabel-root.Mui-disabled": {
-                      color: "rgba(0, 0, 0,0.0)"
-                    },
-                       "&.Mui-disabled": {
-                    },
-                    '& .MuiFormControlLabel-label': {
-                       color: itemColor
-                    },
-                     '& .css-1nweas-MuiFormControlLabel-root.MuiFormControlLabel-label.Mui-disabled': {
-                    },
-                    '& .MuiFormControlLabel-root': {
-                         color: itemColor
-                    },          
-                    "&.MuiSwitch-root .MuiSwitch-switchBase": {
-                    },
-                    "& .MuiSwitch-thumb": {
-                        color: itemColor
-                    },
-                      "& .MuiSwitch-track": {  // if dont sepecify is grey
-                         backgroundColor: "white",// works is white when collapse
-                    },
-                      '& .Mui-checked + .MuiSwitch-track': {
-                         backgroundColor: "white" // Example: Orange color when checked
-                    }
-                }}
-               />}
-              labelPlacement="start"/>
-              <Button ref={mapWidthRef} variant="contained" 
-                            style={{ maxWidth: '40px', maxHeight: '40px', minWidth: '40px', minHeight: '40px',color:itemColor,display:"none"}}
-                            onClick={(event) => {  setMapWidth( window.innerWidth.toString() + "px");
-                              setTimeout(() => {handleApplyStateToConfigFile() }, 5000);  //works with the d   handleApplyStateToConfigFile();
-              }} >
-              </Button>
-    </FormGroup>
+      
       <img src={`${GEOVIEW_CORE_URL}/img/Logo.png`} alt="GeoView" 
       style={{ height: 0, marginRight: 16 }} />{/* Adjust height and margin as needed */}
       <Typography variant="h6" component="div" sx={{ flexGrow: 1,color: 'white'}}>

@@ -19,7 +19,7 @@ import { useContext, useState, useReducer, useRef,useEffect,
 import { CGPVContext } from '@/providers/cgpvContextProvider/CGPVContextProvider';
 import _ from 'lodash';
 import PillsAutoComplete from './PillsAutoComplete';
-import {aoiModified,eventLoopCounter,SwiperPackageOrientation,SwiperPackagekeyboardOffset,layerOptions,panelSize,
+import {aoiModified,SwiperPackageOrientation,SwiperPackagekeyboardOffset,layerOptions,panelSize,
   componentsOptions, basemapShading, basemapLabelling, footerTabslist, languageOptions, navBarOptions, basemapOptions, appBarOptions, mapInteractionOptions, mapProjectionOptions, zoomOptions, themeOptions, CONFIG_FILES_LIST,
   corePackagesOptions,aoiDisplay,swiperDisplay, GEOVIEW_CORE_URL, Language
 } from '@/constants';
@@ -72,14 +72,14 @@ export function MapBuilder() {
   const mapWidth1= useRef<HTMLTextAreaElement>(null);
   const refAppply= useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (document.getElementById(mapId) !== null) { 
-      if (eventLoopCounter.current === 0) { // convert full screen in % to px on reinitialize
-         setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
-
-       }
-    };
-  }, []);
+  //useEffect(() => {
+  //  if (document.getElementById(mapId) !== null) { 
+  //    if (eventLoopCounter.current === 0) { // convert full screen in % to px on reinitialize
+  //      console.log("MapBuilder useEffect set map width px", mapWidth1.current!.value);
+  //      setMapWidth((window.innerWidth - (435 +7)).toString() + "px");
+  //     }
+  //  };
+ // }, []);
 
   useEffect(() => {
     if (cgpv.api.hasMapViewer(mapId)) {
@@ -455,7 +455,7 @@ export function MapBuilder() {
                 size="small"
                 id="map-width"
                 label="Width"
-                defaultValue={mapWidth.substring(0, mapWidth.length - 2)}  
+                defaultValue={mapWidth.replace("px", "")}  
                 onChange={(event) => { 
                    if (event.target.value.match(/^\d+$/)) {
                      setMapSizeValid(true);
@@ -502,10 +502,9 @@ export function MapBuilder() {
          <Button 
            style={{ maxWidth: '30px', maxHeight: '40px', minWidth: '40px', minHeight: '40px' }}
            onClick={(event) => {
-          
              if ( mapWidth1.current)  {  // update width text field,mapWidth is a hook and is a update delay
-               panelSize.current.toString().includes('.') ?
-                 mapWidth1.current!.value =(panelSize.current.toString().substring(0, panelSize.current.toString().indexOf('.')))
+              panelSize.current.toString().includes('.') ?
+                 mapWidth1.current!.value =panelSize.current.toString().substring(0, (panelSize.current.toString().indexOf('.')))
                  : mapWidth1.current!.value =(panelSize.current.toString()+"px");
              }   
               setMapSizeValid(true)
