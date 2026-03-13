@@ -28,7 +28,7 @@ export default function PillsAutoComplete(props: PillsAutoCompleteProps) {
     onChange?.(newValue, reason, detail.option.value);
   };
  
-  // Filter out the options that are already in the selectedOptions state
+  // Filter out the options that are already in the selectedOptions state of Ui tab to displau just packages
   const availableOptions = options.filter(
     (option) => option.group !== "1");
   
